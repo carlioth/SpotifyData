@@ -5,6 +5,8 @@ var spotifyApi = new SpotifyWebApi(secrets.spotify);
 
 var user = 'p1_sverigesradio';
 var myDataObject = {};
+var allPlaylistIds = null;
+var maxLimit = 50;
 
 spotifyApi.clientCredentialsGrant()
     .then(function (data) {
@@ -12,16 +14,8 @@ spotifyApi.clientCredentialsGrant()
     })
     .then(function (res) {
         //Offset to skip non "sommarprat"
-        return spotifyApi.getUserPlaylists(user, { limit: 50, offset: 2});
-    })
-    .then(function (data) {
-        data.body.items.forEach(function (rel) {
-            var key = rel.href;
-            myDataObject[key] = {
-                info: rel
-            };
-        })
-        return data.body.items.map(item => item.id);
+        //GetAmount of playlists
+        return fetchData();
     })
     .then(function (result) {
         return Promise.all(result.map(playlist => getTracks(playlist)));
@@ -40,6 +34,33 @@ function savePlaylistData(result) {
         myDataObject[key].tracks = result[i].body.items;
     }
 }
+
+var fetchData = function () {
+    var goFetch = function (users) {
+        return getPlaylists().then(function (data) {
+            data.body.items.forEach(function (rel) {
+                 users.push(rel.id);
+                var key = rel.href;
+                myDataObject[key] = {
+                    info: rel
+                };
+            })
+            if (data.body.next == null) {
+                return users;
+            } else {
+                return goFetch(users);
+            }
+        });
+    }
+    return goFetch([]);
+};
+var currentOffset = 2;
+var getPlaylists = function () {
+    var activeOffset = currentOffset;
+    currentOffset += maxLimit;
+
+    return Promise.resolve(spotifyApi.getUserPlaylists(user, { limit: maxLimit, offset: activeOffset }));
+};
 
 function savePlaylistToFile() {
     const fs = require('fs');
