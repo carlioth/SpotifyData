@@ -1,46 +1,35 @@
-var SpotifyWebApi = require('spotify-web-api-node');
-var secrets = require('./secrets');
+import SpotifyWebApi from 'spotify-web-api-node';
+import secrets from './secrets';
+import fs from 'fs';
+import { join as joinPath } from 'path';
 
-var spotifyApi = new SpotifyWebApi(secrets.spotify);
+const spotifyApi = new SpotifyWebApi(secrets.spotify);
+const user = 'p1_sverigesradio';
+const myDataObject = {};
+const maxLimit = 50;
 
-var user = 'p1_sverigesradio';
-var myDataObject = {};
-var allPlaylistIds = null;
-var maxLimit = 50;
+const getPlaylistsSleepTime = 5;
+const getTracksSleepTime = 100;
 
-spotifyApi.clientCredentialsGrant()
-    .then(function (data) {
-        spotifyApi.setAccessToken(data.body['access_token']);
-    })
-    .then(function (res) {
-        //Offset to skip non "sommarprat"
-        //GetAmount of playlists
-        return fetchData();
-    })
-    .then(function (result) {
-        return Promise.all(result.map(playlist => getTracks(playlist)));
-    })
-    .then(function (result) {
-        savePlaylistData(result);
-        savePlaylistToFile();
-    })
-    .catch((error) => {
-        console.log('Error getting Spotify data ' + error);
-    });
+let getPlaylistsIndex = 0;
+let getTracksIndex = 0;
+let currentOffset = 2;
 
-function savePlaylistData(result) {
-    for (var i = 0, len = result.length; i < len; i++) {
-        var key = result[i].body.href.split('/tracks')[0];
+const savePlaylistData = (result) => {
+    for (let i = 0, len = result.length; i < len; i++) {
+        const key = result[i].body.href.split('/tracks')[0];
+
         myDataObject[key].tracks = result[i].body.items;
     }
-}
+};
 
-var fetchData = function () {
-    var goFetch = function (users) {
-        return getPlaylists().then(function (data) {
-            data.body.items.forEach(function (rel) {
-                 users.push(rel.id);
-                var key = rel.href;
+const fetchData = () => {
+    const goFetch = (users) => {
+        return getPlaylists().then((data) => {
+            data.body.items.forEach((rel) => {
+                const key = rel.href;
+
+                users.push(rel.id);
                 myDataObject[key] = {
                     info: rel
                 };
@@ -54,26 +43,57 @@ var fetchData = function () {
     }
     return goFetch([]);
 };
-var currentOffset = 2;
-var getPlaylists = function () {
-    var activeOffset = currentOffset;
-    currentOffset += maxLimit;
 
-    return Promise.resolve(spotifyApi.getUserPlaylists(user, { limit: maxLimit, offset: activeOffset }));
+const getPlaylists = function () {
+    return new Promise((resolve, reject) => {
+        const activeOffset = currentOffset;
+        currentOffset += maxLimit;
+        setTimeout(() => {
+            console.log(`getPlaylists for ${user}`);
+            spotifyApi.getUserPlaylists(user, { limit: maxLimit, offset: activeOffset }).then(resolve).catch(reject);
+        }, getPlaylistsSleepTime * getPlaylistsIndex++);
+    });;
 };
 
-function savePlaylistToFile() {
-    const fs = require('fs');
-    const join = require('path').join;
-    const filePath = join(__dirname, user + 'playlistdata.json');
+const savePlaylistToFile = () => {
+    const filePath = joinPath(__dirname, `${user}_playlistdata.json`);
     fs.writeFile(filePath, JSON.stringify(myDataObject), function (err) {
         if (err) {
-            return console.log(err);
+            console.log(err);
         }
         console.log("The file was saved!");
     });
+};
+
+const getTracks = (playlist) => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => {
+            console.log(`getPlaylistTracks for ${user} and playlist ${playlist}`);
+            spotifyApi.getPlaylistTracks(user, playlist).then(resolve).catch(reject);
+        }, getTracksSleepTime * getTracksIndex++);
+    })
 }
 
-function getTracks(playlist) {
-    return spotifyApi.getPlaylistTracks(user, playlist);
+const start = () => {
+    spotifyApi.clientCredentialsGrant()
+        .then((data) => {
+            spotifyApi.setAccessToken(data.body['access_token']);
+        })
+        .then((res) => {
+            //Offset to skip non "sommarprat"
+            //GetAmount of playlists
+            return fetchData();
+        })
+        .then((result) => {
+            return Promise.all(result.map(playlist => getTracks(playlist)));
+        })
+        .then((result) => {
+            savePlaylistData(result);
+            savePlaylistToFile();
+        })
+        .catch((error) => {
+            console.log('Error getting Spotify data ' + error);
+        });
 }
+
+start();
