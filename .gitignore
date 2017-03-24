@@ -1,6 +1,7 @@
 # Project specific
 secrets.js
 *data.json
+dist
 
 # Logs
 logs
