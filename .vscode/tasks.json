@@ -3,7 +3,7 @@
   "command": "npm",
   "isShellCommand": true,
   "args": ["run"],
-  "showOutput": "silent",
+  "showOutput": "always",
   "tasks": [
     {
       "taskName": "compile",

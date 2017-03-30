@@ -7,22 +7,33 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceRoot}\\dist\\parse.js",
+            "name": "Debug",
+            "program": "${workspaceRoot}/dist/src/parse.js",
+            "stopOnEntry": false,
+            "cwd": "${workspaceRoot}",
             "preLaunchTask": "compile",
+            "runtimeExecutable": null,
             "runtimeArgs": [
                 "--nolazy"
             ],
-            "console": "integratedTerminal",
-            "sourceMaps": true,
-            "outFiles": ["${workspaceRoot}/dist"]
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "outFiles": [
+                "${workspaceRoot}/dist/src/**.js"
+            ]
         },
         {
+            "name": "Attach",
             "type": "node",
             "request": "attach",
-            "name": "Attach to Process",
+            "port": 5858,
             "address": "localhost",
-            "port": 5858
+            "restart": false,
+            "sourceMaps": true,
+            "outDir": "${workspaceRoot}/dist/src",
+            "localRoot": "${workspaceRoot}",
+            "remoteRoot": null
         }
     ]
 }
